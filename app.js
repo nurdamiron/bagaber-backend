@@ -9,7 +9,7 @@ const { testConnection, syncModels } = require('./config/database');
 const logger = require('./services/loggerService');
 const { errorHandler } = require('./middleware/errorHandler');
 
-// Загрузка переменных окружения
+// Загрузка переменных окруженияыы
 dotenv.config();
 
 // Импортируем маршруты
