@@ -68,6 +68,7 @@ class KaspiService {
     try {
       const allOrders = [];
       
+      logger.info(`Using Kaspi API URL: ${this.apiUrl}`);
       // Определяем общий период в днях
       const totalDays = Math.ceil((toDate - fromDate) / (24 * 60 * 60 * 1000));
       logger.info(`Запрашиваем заказы за период ${totalDays} дней`);
@@ -77,6 +78,14 @@ class KaspiService {
       
       logger.info(`Период разбит на ${dateRanges.length} запросов`);
       
+      try {
+        await this.axiosInstance.get('/'); // or another simple endpoint
+        logger.info('Successfully connected to Kaspi API');
+      } catch (connError) {
+        logger.error('Failed to connect to Kaspi API:', connError.response?.status, connError.response?.data);
+        throw new Error(`Kaspi API connection failed: ${connError.message}`);
+      }
+
       // Выполняем запросы для каждого периода
       for (const range of dateRanges) {
         logger.info(`Запрашиваем заказы с ${range.fromDate.toISOString()} по ${range.toDate.toISOString()}`);
@@ -117,8 +126,12 @@ class KaspiService {
       logger.info(`Всего получено ${allOrders.length} заказов из Kaspi API`);
       return allOrders;
     } catch (error) {
-      logger.error('Ошибка при получении заказов из Kaspi API:', error);
-      throw new Error(`Ошибка при получении заказов из Kaspi: ${error.message}`);
+      logger.error('Error fetching orders from Kaspi API:', error);
+    logger.error('Error details:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      headers: error.response?.headers
+    });
     }
   }
 

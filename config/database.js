@@ -35,6 +35,7 @@ const sequelize = new Sequelize(
 );
 
 // Функция для проверки подключения
+// Fix in config/database.js
 const testConnection = async () => {
   try {
     await sequelize.authenticate();
@@ -42,6 +43,13 @@ const testConnection = async () => {
     return true;
   } catch (error) {
     logger.error('Ошибка подключения к базе данных RDS:', error);
+    // Improve error handling here
+    console.error("Database connection details:", {
+      host: config.database.host,
+      port: config.database.port,
+      database: config.database.name,
+      user: config.database.user
+    });
     return false;
   }
 };
