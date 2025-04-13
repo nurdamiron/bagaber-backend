@@ -5,16 +5,18 @@ const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Роуты, требующие авторизации
+// Защищенные маршруты - требуют авторизации
 router.use(protect);
 
-// Админские роуты
+// Админские маршруты
 router.post('/send-review-requests', authorize('admin'), notificationController.manualSendReviewRequests);
 router.put('/time-window', authorize('admin'), notificationController.setTimeWindow);
 router.post('/retry-failed', authorize('admin'), notificationController.retryFailedNotifications);
+router.post('/test', authorize('admin'), notificationController.sendTestNotification);
 
-// Общедоступные роуты (для мониторинга)
+// Общедоступные маршруты (для мониторинга)
 router.get('/stats', notificationController.getNotificationStats);
 router.get('/status', notificationController.getSchedulerStatus);
+router.get('/daily-stats', notificationController.getDailyStats);
 
 module.exports = router;

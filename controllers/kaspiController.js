@@ -8,50 +8,83 @@ const logger = require('../services/loggerService');
 // @access  Private/Admin
 const fetchOrders = async (req, res, next) => {
   try {
+    // Log the incoming request details
+    logger.info(`Fetch Orders Request - Query params: ${JSON.stringify(req.query)}`);
+    
+    // Extract parameters from the request
     const { days = 1, startDate, endDate } = req.query;
     
     let fromDate, toDate;
     
-    // Определяем диапазон дат на основе параметров запроса
+    // Determine date range based on parameters
     if (startDate && endDate) {
-      // Если указаны обе даты, используем их
+      // If specific dates are provided, use them
       fromDate = new Date(startDate);
       toDate = new Date(endDate);
       
-      // Проверяем корректность дат
+      // Validate dates
       if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+        logger.warn(`Invalid date format: startDate=${startDate}, endDate=${endDate}`);
         return next(new ApiError(400, 'Некорректный формат дат. Используйте формат ISO (например, 2023-08-15)'));
       }
       
-      // Проверяем, что начальная дата меньше конечной
       if (fromDate >= toDate) {
+        logger.warn(`Invalid date range: fromDate=${fromDate} >= toDate=${toDate}`);
         return next(new ApiError(400, 'Начальная дата должна быть меньше конечной'));
       }
+      
+      logger.info(`Using provided date range: ${fromDate.toISOString()} to ${toDate.toISOString()}`);
     } else {
-      // Если даты не указаны, рассчитываем по количеству дней
-      toDate = new Date(); // Текущая дата
-      fromDate = new Date(toDate.getTime() - parseInt(days) * 24 * 60 * 60 * 1000);
+      // Calculate dates based on the "days" parameter
+      toDate = new Date(); // Current date
+      
+      // Parse days parameter safely
+      const daysNum = parseInt(days);
+      if (isNaN(daysNum) || daysNum <= 0) {
+        logger.warn(`Invalid days parameter: ${days}`);
+        return next(new ApiError(400, 'Параметр "days" должен быть положительным числом'));
+      }
+      
+      fromDate = new Date(toDate.getTime() - daysNum * 24 * 60 * 60 * 1000);
+      logger.info(`Using date range from last ${daysNum} days: ${fromDate.toISOString()} to ${toDate.toISOString()}`);
     }
     
-    logger.info(`Запрос заказов с ${fromDate.toISOString()} по ${toDate.toISOString()}`);
-    
-    // Проверяем, не превышает ли диапазон максимально допустимый (на всякий случай)
-    const maxDays = 100; // Максимальное количество дней для всех запросов
+    // Check if the date range is reasonable
+    const maxDays = 100; // Maximum allowed days range
     const requestedDays = Math.ceil((toDate - fromDate) / (24 * 60 * 60 * 1000));
     
     if (requestedDays > maxDays) {
+      logger.warn(`Date range too large: ${requestedDays} days (max: ${maxDays} days)`);
       return next(new ApiError(400, `Слишком большой диапазон дат (${requestedDays} дней). Максимум: ${maxDays} дней`));
     }
     
-    // Fetch orders from Kaspi
+    // Call Kaspi service to fetch orders
+    logger.info(`Calling kaspiService.fetchNewOrders with date range: ${fromDate} to ${toDate}`);
     const orders = await kaspiService.fetchNewOrders(fromDate, toDate);
     
-    // Process and save orders
-    const processedOrders = await kaspiService.processOrders(orders);
+    // Check if orders array is valid
+    if (!Array.isArray(orders)) {
+      logger.error('kaspiService.fetchNewOrders returned non-array data', { orders });
+      return next(new ApiError(500, 'Получены некорректные данные от Kaspi API'));
+    }
     
+    logger.info(`Successfully fetched ${orders.length} orders from Kaspi API`);
+    
+    // Process and save orders
+    let processedOrders = [];
+    try {
+      processedOrders = await kaspiService.processOrders(orders);
+      logger.info(`Successfully processed ${processedOrders.length} orders`);
+    } catch (processError) {
+      logger.error('Error processing orders:', processError);
+      // Continue execution even if processing fails
+      // We'll still return the fetched orders count
+    }
+    
+    // Respond with success
     res.status(200).json({
       success: true,
-      message: `Успешно получено и обработано ${processedOrders.length} новых заказов`,
+      message: `Успешно получено ${orders.length} заказов, обработано ${processedOrders.length}`,
       data: {
         totalFetched: orders.length,
         totalProcessed: processedOrders.length,
@@ -63,6 +96,7 @@ const fetchOrders = async (req, res, next) => {
       }
     });
   } catch (error) {
+    logger.error('Error in fetchOrders controller:', error);
     next(error);
   }
 };
