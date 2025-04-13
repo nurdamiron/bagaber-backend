@@ -14,7 +14,7 @@ RUN npm install --production
 COPY . .
 
 # Открытие порта
-EXPOSE 3001
+EXPOSE 3000
 
 # Запуск приложения
 CMD ["node", "server.js"]
