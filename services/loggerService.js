@@ -20,6 +20,21 @@ const logger = createLogger({
   ]
 });
 
+const metrics = {
+  recordApiCall: (source, endpoint, success, duration) => {
+    logger.info(`API Call [${source}]: ${endpoint} | Success: ${success} | Duration: ${duration}ms`);
+  },
+  
+  recordDbQuery: (query, success, duration) => {
+    logger.debug(`DB Query: ${query} | Success: ${success} | Duration: ${duration}ms`);
+  },
+  
+  recordExternalCall: (service, endpoint, success, duration) => {
+    logger.info(`External Call [${service}]: ${endpoint} | Success: ${success} | Duration: ${duration}ms`);
+  }
+};
+
+
 module.exports = {
   debug: (msg) => logger.debug(msg),
   info: (msg) => logger.info(msg),
@@ -30,5 +45,7 @@ module.exports = {
     } else {
       logger.error(msg);
     }
-  }
+  },
+  // Add metrics property
+  metrics
 };

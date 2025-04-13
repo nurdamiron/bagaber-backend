@@ -46,13 +46,21 @@ app.use((req, res, next) => {
     const status = res.statusCode;
     const success = status < 400;
     
-    // Логируем метрику
-    logger.metrics.recordApiCall(
-      'internal',
-      `${req.method} ${req.originalUrl}`,
-      success,
-      duration
-    );
+    // Проверяем существование метода metrics перед вызовом
+    if (logger.metrics && typeof logger.metrics.recordApiCall === 'function') {
+      // Логируем метрику если метод существует
+      logger.metrics.recordApiCall(
+        'internal',
+        `${req.method} ${req.originalUrl}`,
+        success,
+        duration
+      );
+    } else {
+      // Запасной вариант - используем обычное логирование
+      logger.info(
+        `API Call: ${req.method} ${req.originalUrl} | Status: ${status} | Duration: ${duration}ms`
+      );
+    }
   });
   
   next();
@@ -89,7 +97,7 @@ app.use('*', (req, res, next) => {
 });
 
 // Запуск сервера
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5001;
 
 async function startServer() {
   try {
