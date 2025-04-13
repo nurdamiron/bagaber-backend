@@ -46,25 +46,37 @@ exports.register = async (req, res, next) => {
 };
 
 // Авторизация пользователя (логин)
+// Enhanced login function with debugging
 exports.login = async (req, res, next) => {
   try {
+    console.log('Login attempt:', { username: req.body.username });
+    
     const { username, password } = req.body;
     
     if (!username || !password) {
+      console.log('Missing credentials');
       throw new ApiError(400, 'Username and password are required');
     }
     
+    // Find user with detailed logging
     const user = await User.findOne({ where: { username } });
+    console.log('User lookup result:', user ? `Found (ID: ${user.id})` : 'Not found');
+    
     if (!user) {
       throw new ApiError(401, 'Invalid credentials');
     }
     
+    // Test password match with detailed logging
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log('Password match result:', isMatch);
+    
     if (!isMatch) {
       throw new ApiError(401, 'Invalid credentials');
     }
     
+    // Generate token
     const token = generateToken(user);
+    console.log('Login successful for:', username);
     
     res.status(200).json({
       success: true,
@@ -75,6 +87,7 @@ exports.login = async (req, res, next) => {
       }
     });
   } catch (error) {
+    console.error('Login error:', error);
     next(error);
   }
 };
